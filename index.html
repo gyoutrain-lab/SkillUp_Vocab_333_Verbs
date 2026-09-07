@@ -36,9 +36,7 @@
 
         h1, h2, h3 { color: #0f172a; margin-top: 0; }
 
-        .form-group {
-            margin-bottom: 20px;
-        }
+        .form-group { margin-bottom: 20px; }
 
         label {
             display: block;
@@ -46,7 +44,7 @@
             font-weight: 600;
         }
 
-        input[type="text"], input[type="tel"], input[type="password"] {
+        input[type="text"], input[type="tel"] {
             width: 100%;
             padding: 10px 14px;
             border: 1px solid var(--border);
@@ -136,23 +134,9 @@
             font-weight: 600;
         }
         .admin-link:hover { background: #cbd5e1; }
-
-        .loading-overlay {
-            position: fixed;
-            top:0; left:0; right:0; bottom:0;
-            background: rgba(255,255,255,0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-weight: bold;
-            font-size: 18px;
-            z-index: 999;
-        }
     </style>
 </head>
 <body>
-
-<div id="loading" class="loading-overlay hidden">Mengsinkronkan Data Server...</div>
 
 <div class="container">
     <!-- REGISTRATION VIEW -->
@@ -213,6 +197,7 @@
         <div class="card">
             <h3>Skor Anda: <span id="score-val" style="color:var(--primary); font-size:28px;"></span>%</h3>
             <p id="score-detail"></p>
+            <p id="sync-status" style="font-size: 13px; color: #64748b; margin-top: 10px;"></p>
         </div>
         <button onclick="showDashboard()">Kembali ke Dashboard Utama</button>
     </div>
@@ -220,11 +205,10 @@
     <!-- ADMIN PANEL -->
     <div id="view-admin" class="hidden">
         <h2>Panel Operator / Administrator</h2>
-        <p>Akses Terproteksi Kata Sandi Operator (Data Online Terpusat)</p>
+        <p>Akses Terproteksi Kata Sandi Operator</p>
         
         <div style="display:flex; gap:10px; margin-bottom:15px;">
             <button onclick="showDashboard()">&larr; Kembali ke Dashboard Peserta</button>
-            <button onclick="fetchOnlineDB(true)" style="background-color:#0284c7;"> Refresh Data Server</button>
             <button onclick="exportCSV()" style="background-color:var(--success);">Unduh Rekap CSV / Excel</button>
         </div>
         
@@ -250,11 +234,12 @@
 <div class="admin-link" onclick="openAdmin()">🔑 Panel Operator</div>
 
 <script>
-// ==================== KONFIGURASI JSONBIN.IO ====================
-const JSONBIN_BIN_ID = "6a9e80587e19fe510f39230b"; // Contoh: "660a1234abc..."
-const JSONBIN_API_KEY = "$2a$10$4lmODdxaLkBVIsNU0wHrCOllyrGpXGSvKuZO/.g5c/L8N01GR/88S"; // Contoh: "$2b$10$..."
-const ADMIN_PASS = "Fakinah_1";
-// ================================================================
+// ==========================================
+// ISI DUA VARIABEL DI BAWAH INI DARI JSONBIN.IO
+// ==========================================
+const JSONBIN_API_KEY = "$2a$10$4lmODdxaLkBVIsNU0wHrCOllyrGpXGSvKuZO/.g5c/L8N01GR/88S"; 
+const JSONBIN_BIN_ID  = "6a9e80587e19fe510f39230b"; 
+// ==========================================
 
 const baseVerbs = [
     {v: "ADMINISTER", n: "administration", adj: "administrative", adv: "administratively", agent: "administrator"},
@@ -339,62 +324,17 @@ let currentQuestions = [];
 let currentQIndex = 0;
 let userAnswers = [];
 
-function toggleLoading(show) {
-    document.getElementById('loading').classList.toggle('hidden', !show);
-}
+const ADMIN_PASS = "Fakinah_1";
 
-// KHUSUS OPERASI SERVER JSONBIN
-async function fetchOnlineDB(showAlert = false) {
-    toggleLoading(true);
-    try {
-        const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
-            headers: { 'X-Master-Key': JSONBIN_API_KEY }
-        });
-        if (!res.ok) throw new Error("Gagal mengambil data dari server.");
-        const data = await res.json();
-        const db = data.record || {};
-        localStorage.setItem('v333_users_db', JSON.stringify(db));
-        if (showAlert) alert("Data berhasil diperbarui dari server!");
-        return db;
-    } catch (err) {
-        console.error(err);
-        alert("Gagal terhubung ke server online. Menggunakan data lokal terpaut.");
-        return JSON.parse(localStorage.getItem('v333_users_db') || '{}');
-    } finally {
-        toggleLoading(false);
-    }
-}
-
-async function saveOnlineDB(db) {
-    toggleLoading(true);
-    localStorage.setItem('v333_users_db', JSON.stringify(db));
-    try {
-        await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Master-Key': JSONBIN_API_KEY
-            },
-            body: JSON.stringify(db)
-        });
-    } catch (err) {
-        console.error("Gagal sinkronisasi online:", err);
-        alert("Peringatan: Gagal menyimpan rekap nilai ke server pusat. Periksa koneksi internet.");
-    } finally {
-        toggleLoading(false);
-    }
-}
-
-window.onload = async function() {
+window.onload = function() {
     let savedUser = localStorage.getItem('v333_current_user');
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
-        await fetchOnlineDB();
         showDashboard();
     }
 };
 
-async function handleRegister() {
+function handleRegister() {
     const name = document.getElementById('user-name').value.trim();
     const phone = document.getElementById('user-phone').value.trim();
 
@@ -403,7 +343,7 @@ async function handleRegister() {
         return;
     }
 
-    let usersDB = await fetchOnlineDB();
+    let usersDB = JSON.parse(localStorage.getItem('v333_users_db') || '{}');
     
     if (!usersDB[phone]) {
         usersDB[phone] = { name: name, phone: phone, preScore: null, postScore: null };
@@ -411,7 +351,7 @@ async function handleRegister() {
         usersDB[phone].name = name;
     }
 
-    await saveOnlineDB(usersDB);
+    localStorage.setItem('v333_users_db', JSON.stringify(usersDB));
     currentUser = usersDB[phone];
     localStorage.setItem('v333_current_user', JSON.stringify(currentUser));
     
@@ -510,7 +450,7 @@ function nextQuestion() {
     }
 }
 
-async function finishTest() {
+function finishTest() {
     let correctCount = 0;
     currentQuestions.forEach((q, idx) => {
         if (userAnswers[idx] === q.correct) correctCount++;
@@ -518,7 +458,7 @@ async function finishTest() {
 
     let score = Math.round((correctCount / currentQuestions.length) * 100);
 
-    let usersDB = await fetchOnlineDB();
+    let usersDB = JSON.parse(localStorage.getItem('v333_users_db') || '{}');
     if (currentTestType === 'pre') {
         currentUser.preScore = score;
     } else {
@@ -526,25 +466,76 @@ async function finishTest() {
     }
 
     usersDB[currentUser.phone] = currentUser;
-    await saveOnlineDB(usersDB);
+    localStorage.setItem('v333_users_db', JSON.stringify(usersDB));
     localStorage.setItem('v333_current_user', JSON.stringify(currentUser));
 
     document.getElementById('view-test').classList.add('hidden');
     document.getElementById('view-result').classList.remove('hidden');
     document.getElementById('score-val').innerText = score;
-    document.getElementById('score-detail').innerText = `Anda berhasil menjawab benar ${correctCount} dari total ${currentQuestions.length} soal. Nilai Anda telah otomatis tersimpan di server operator.`;
+    document.getElementById('score-detail').innerText = `Anda berhasil menjawab benar ${correctCount} dari total ${currentQuestions.length} soal. Nilai Anda telah otomatis tersimpan.`;
+
+    saveToJSONBin(usersDB);
+}
+
+// INTEGRASI JSONBIN.IO
+async function saveToJSONBin(usersDB) {
+    const syncElem = document.getElementById('sync-status');
+    if (JSONBIN_API_KEY.includes("PASTE") || JSONBIN_BIN_ID.includes("PASTE")) {
+        syncElem.innerText = "⚠️ API Key / Bin ID JSONBin belum diatur (data disimpan di memori browser).";
+        return;
+    }
+
+    syncElem.innerText = "🔄 Mengirim nilai ke Server JSONBin...";
+
+    try {
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': JSONBIN_API_KEY
+            },
+            body: JSON.stringify(usersDB)
+        });
+
+        if (response.ok) {
+            syncElem.innerText = "✅ Nilai berhasil tersimpan secara online di JSONBin!";
+        } else {
+            syncElem.innerText = "⚠️ Gagal kirim ke JSONBin (periksa API Key/Bin ID).";
+        }
+    } catch (err) {
+        syncElem.innerText = "⚠️ Gagal terhubung ke internet, nilai tersimpan di browser.";
+        console.error(err);
+    }
+}
+
+async function fetchFromJSONBin() {
+    if (JSONBIN_API_KEY.includes("PASTE") || JSONBIN_BIN_ID.includes("PASTE")) return;
+
+    try {
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+            headers: { 'X-Master-Key': JSONBIN_API_KEY }
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (data.record) {
+                localStorage.setItem('v333_users_db', JSON.stringify(data.record));
+            }
+        }
+    } catch (err) {
+        console.error("Gagal mengambil data dari JSONBin:", err);
+    }
 }
 
 async function openAdmin() {
     const inputPass = prompt("Masukkan Password Operator:");
     if (inputPass === ADMIN_PASS) {
-        await fetchOnlineDB();
         document.getElementById('view-register').classList.add('hidden');
         document.getElementById('view-dashboard').classList.add('hidden');
         document.getElementById('view-test').classList.add('hidden');
         document.getElementById('view-result').classList.add('hidden');
         document.getElementById('view-admin').classList.remove('hidden');
 
+        await fetchFromJSONBin();
         renderAdminTable();
     } else if (inputPass !== null) {
         alert("Kata sandi salah! Akses ditolak.");
@@ -578,13 +569,14 @@ function renderAdminTable() {
     });
 }
 
-async function resetUser(phone) {
+function resetUser(phone) {
     if (confirm(`Apakah Anda yakin ingin mereset hasil tes untuk ID/No HP: ${phone}?`)) {
-        let usersDB = await fetchOnlineDB();
+        let usersDB = JSON.parse(localStorage.getItem('v333_users_db') || '{}');
         if (usersDB[phone]) {
             usersDB[phone].preScore = null;
             usersDB[phone].postScore = null;
-            await saveOnlineDB(usersDB);
+            localStorage.setItem('v333_users_db', JSON.stringify(usersDB));
+            saveToJSONBin(usersDB);
             renderAdminTable();
         }
     }
