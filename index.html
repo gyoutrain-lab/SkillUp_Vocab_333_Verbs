@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Word Formation Mastery Test</title>
+    <title>333 Verbs Mastery Assessment</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -136,20 +136,28 @@
             font-weight: 600;
         }
         .admin-link:hover { background: #cbd5e1; }
-        
-        .loading-status {
-            font-size: 13px;
-            color: #64748b;
-            margin-top: 5px;
+
+        .loading-overlay {
+            position: fixed;
+            top:0; left:0; right:0; bottom:0;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 18px;
+            z-index: 999;
         }
     </style>
 </head>
 <body>
 
+<div id="loading" class="loading-overlay hidden">Mengsinkronkan Data Server...</div>
+
 <div class="container">
     <!-- REGISTRATION VIEW -->
     <div id="view-register">
-        <h1>Word Formation Mastery Assessment</h1>
+        <h1>333 Most Used Verbs Mastery Assessment</h1>
         <p>Silakan isi identitas diri Anda sebelum memulai tes *word formation/derivatives*.</p>
         <form id="form-register" onsubmit="event.preventDefault(); handleRegister();">
             <div class="form-group">
@@ -160,8 +168,7 @@
                 <label for="user-phone">Nomor Telepon / HP (Sebagai ID Unik Peserta):</label>
                 <input type="tel" id="user-phone" required placeholder="Contoh: 08123456789">
             </div>
-            <button type="submit" id="btn-reg" class="btn-block">Lanjutkan ke Dashboard Tes</button>
-            <div id="reg-loading" class="loading-status"></div>
+            <button type="submit" class="btn-block">Lanjutkan ke Dashboard Tes</button>
         </form>
     </div>
 
@@ -171,17 +178,17 @@
         <p>ID Peserta (No. HP): <strong><span id="dash-phone"></span></strong></p>
 
         <div class="card">
-            <h3>1. Pre-Test (50 Soal)</h3>
-            <p>Menguji pemahaman dasar pembentukan kata turunan (Nouns, Adjectives, Adverbs, Agent) dari kata kerja dasar.</p>
+            <h3>1. Pre-Test (100 Soal)</h3>
+            <p>Menguji pemahaman dasar 100 verba paling sering digunakan beserta pembentukan kata turunan (Nouns, Gerunds, Present Participle).</p>
             <div id="status-pretest">Status: <span class="badge bg-blue">Belum Selesai</span></div>
-            <button id="btn-pretest" onclick="startTest('pre')" style="margin-top:15px;">Mulai Pre-Test</button>
+            <button id="btn-pretest" onclick="startTest('pre')" style="margin-top:15px;">Mulai Pre-Test (100 Soal)</button>
         </div>
 
         <div class="card">
-            <h3>2. Post-Test (100 Soal)</h3>
-            <p>Tes evaluasi akhir komprehensif. Modul ini terbuka secara otomatis setelah Pre-Test selesai dikerjakan.</p>
+            <h3>2. Post-Test (233 Soal)</h3>
+            <p>Tes evaluasi akhir komprehensif menguji 233 verba lanjutan (Past Participle, Adjectives, Adverbs, Agent). Terbuka otomatis setelah Pre-Test selesai.</p>
             <div id="status-posttest">Status: <span class="badge bg-blue">Terkunci</span></div>
-            <button id="btn-posttest" onclick="startTest('post')" style="margin-top:15px;" disabled>Mulai Post-Test</button>
+            <button id="btn-posttest" onclick="startTest('post')" style="margin-top:15px;" disabled>Mulai Post-Test (233 Soal)</button>
         </div>
         
         <button onclick="logoutUser()" style="background:#64748b;">Ganti Peserta / Keluar</button>
@@ -190,7 +197,7 @@
     <!-- TEST VIEW -->
     <div id="view-test" class="hidden">
         <h2 id="test-title">Kuis</h2>
-        <p id="test-progress">Soal 1 dari 50</p>
+        <p id="test-progress">Soal 1 dari 100</p>
         
         <div class="card">
             <p id="question-text" style="font-size: 18px; font-weight: 500;"></p>
@@ -213,11 +220,11 @@
     <!-- ADMIN PANEL -->
     <div id="view-admin" class="hidden">
         <h2>Panel Operator / Administrator</h2>
-        <p>Akses Terproteksi Kata Sandi Operator (Real-time Cloud Data)</p>
+        <p>Akses Terproteksi Kata Sandi Operator (Data Online Terpusat)</p>
         
         <div style="display:flex; gap:10px; margin-bottom:15px;">
             <button onclick="showDashboard()">&larr; Kembali ke Dashboard Peserta</button>
-            <button onclick="fetchCloudData().then(renderAdminTable)" style="background-color:var(--primary);">🔄 Refresh Data</button>
+            <button onclick="fetchOnlineDB(true)" style="background-color:#0284c7;"> Refresh Data Server</button>
             <button onclick="exportCSV()" style="background-color:var(--success);">Unduh Rekap CSV / Excel</button>
         </div>
         
@@ -228,8 +235,8 @@
                     <tr>
                         <th>No HP (ID)</th>
                         <th>Nama Peserta</th>
-                        <th>Pre-Test (50)</th>
-                        <th>Post-Test (100)</th>
+                        <th>Pre-Test (100)</th>
+                        <th>Post-Test (233)</th>
                         <th>Aksi Operator</th>
                     </tr>
                 </thead>
@@ -243,33 +250,33 @@
 <div class="admin-link" onclick="openAdmin()">🔑 Panel Operator</div>
 
 <script>
-// CONFIGURASI API JSONBIN.IO
-const JSONBIN_BIN_ID = "MASUKKAN_BIN_ID_ANDA_DISINI"; 
-const JSONBIN_API_KEY = "MASUKKAN_MASTER_KEY_ANDA_DISINI";
-const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+// ==================== KONFIGURASI JSONBIN.IO ====================
+const JSONBIN_BIN_ID = "MASUKKAN_BIN_ID_ANDA_DI_SINI"; // Contoh: "660a1234abc..."
+const JSONBIN_API_KEY = "MASUKKAN_MASTER_KEY_ANDA_DI_SINI"; // Contoh: "$2b$10$..."
+const ADMIN_PASS = "Fakinah_1";
+// ================================================================
 
-// BANK DATA KATA KERJA UTAMA & KATA DERIVATIFNYA
 const baseVerbs = [
-    {v: "ACT", n: "action", adj: "active", adv: "actively", agent: "actor"},
-    {v: "CREATE", n: "creation", adj: "creative", adv: "creatively", agent: "creator"},
-    {v: "DECIDE", n: "decision", adj: "decisive", adv: "decisively", agent: "decider"},
-    {v: "EMPLOY", n: "employment", adj: "employable", adv: "", agent: "employer"},
+    {v: "ADMINISTER", n: "administration", adj: "administrative", adv: "administratively", agent: "administrator"},
+    {v: "ASSESS", n: "assessment", adj: "assessable", adv: "", agent: "assessor"},
+    {v: "EVALUATE", n: "evaluation", adj: "evaluative", adv: "", agent: "evaluator"},
+    {v: "MONITOR", n: "monitoring", adj: "monitored", adv: "", agent: "monitor"},
     {v: "INFORM", n: "information", adj: "informative", adv: "informatively", agent: "informant"},
-    {v: "MANAGE", n: "management", adj: "managerial", adv: "", agent: "manager"},
-    {v: "PRODUCE", n: "production", adj: "productive", adv: "productively", agent: "producer"},
-    {v: "SELECT", n: "selection", adj: "selective", adv: "selectively", agent: "selector"},
-    {v: "DEPEND", n: "dependence", adj: "dependent", adv: "dependently", agent: "dependant"},
-    {v: "DIFFER", n: "difference", adj: "different", adv: "differently", agent: ""},
-    {v: "EDUCATE", n: "education", adj: "educational", adv: "educationally", agent: "educator"},
-    {v: "IMAGINE", n: "imagination", adj: "imaginative", adv: "imaginatively", agent: ""},
-    {v: "INVEST", n: "investment", adj: "invested", adv: "", agent: "investor"},
-    {v: "ORGANIZE", n: "organization", adj: "organized", adv: "", agent: "organizer"},
-    {v: "PROTECT", n: "protection", adj: "protective", adv: "protectively", agent: "protector"},
-    {v: "RESPOND", n: "response", adj: "responsive", adv: "responsively", agent: "respondent"},
-    {v: "SUCCEED", n: "success", adj: "successful", adv: "successfully", agent: "successor"},
-    {v: "ATTRACT", n: "attraction", adj: "attractive", adv: "attractively", agent: ""},
-    {v: "COMPUTE", n: "computation", adj: "computational", adv: "", agent: "computer"},
-    {v: "DESCRIBE", n: "description", adj: "descriptive", adv: "descriptively", agent: ""}
+    {v: "DOCUMENT", n: "documentation", adj: "documented", adv: "", agent: ""},
+    {v: "EXAMINE", n: "examination", adj: "examined", adv: "", agent: "examiner"},
+    {v: "ASSIST", n: "assistance", adj: "assistant", adv: "", agent: "assistant"},
+    {v: "PRESCRIBE", n: "prescription", adj: "prescriptive", adv: "", agent: "prescriber"},
+    {v: "STERILIZE", n: "sterilization", adj: "sterile", adv: "sterilly", agent: "sterilizer"},
+    {v: "DETERIORATE", n: "deterioration", adj: "deteriorating", adv: "", agent: ""},
+    {v: "INFECT", n: "infection", adj: "infectious", adv: "infectiously", agent: ""},
+    {v: "PREVENT", n: "prevention", adj: "preventive", adv: "preventively", agent: ""},
+    {v: "TREAT", n: "treatment", adj: "treatable", adv: "", agent: ""},
+    {v: "DIAGNOSE", n: "diagnosis", adj: "diagnostic", adv: "diagnostically", agent: "diagnostician"},
+    {v: "DIFFERENTIATE", n: "differentiation", adj: "differential", adv: "differentially", agent: ""},
+    {v: "EXACERBATE", n: "exacerbation", adj: "exacerbated", adv: "", agent: ""},
+    {v: "INTERVENE", n: "intervention", adj: "interventional", adv: "", agent: ""},
+    {v: "RECOMMEND", n: "recommendation", adj: "recommended", adv: "", agent: ""},
+    {v: "IDENTIFY", n: "identification", adj: "identifiable", adv: "", agent: ""}
 ];
 
 function generateQuestions(count, offsetSeed = 0) {
@@ -277,22 +284,22 @@ function generateQuestions(count, offsetSeed = 0) {
     const templates = [
         {
             type: "Noun Formation",
-            text: (v) => `The system requires proper _____ to function efficiently in this environment. (Root Verb: ${v.v})`,
+            text: (v) => `The proper clinical _____ is mandatory before starting any medical procedure. (Root Verb: ${v.v})`,
             ans: (v) => v.n
         },
         {
             type: "Adjective Formation",
-            text: (v) => `She was highly praised for taking a very _____ approach during the project. (Root Verb: ${v.v})`,
+            text: (v) => `The patient showed a significant response to the _____ intervention. (Root Verb: ${v.v})`,
             ans: (v) => v.adj
         },
         {
-            type: "Adverb Formation",
-            text: (v) => `The team carried out their duties _____ to achieve the annual goal. (Root Verb: ${v.v})`,
-            ans: (v) => v.adv || v.n
+            type: "Adverb/Participle Formation",
+            text: (v) => `The attending physician carefully acted by _____ the patient's condition. (Root Verb: ${v.v})`,
+            ans: (v) => v.v.toLowerCase() + "ing"
         },
         {
             type: "Agent Noun Formation",
-            text: (v) => `A qualified _____ was assigned to manage the operational division. (Root Verb: ${v.v})`,
+            text: (v) => `A qualified healthcare _____ was assigned to oversee the medical ward. (Root Verb: ${v.v})`,
             ans: (v) => v.agent || v.n
         }
     ];
@@ -309,7 +316,7 @@ function generateQuestions(count, offsetSeed = 0) {
 
         options = Array.from(new Set(options)).slice(0, 4);
         while (options.length < 4) {
-            options.push(verbObj.v.toLowerCase() + "ing");
+            options.push(verbObj.v.toLowerCase() + "ed");
         }
 
         options.sort(() => Math.random() - 0.5);
@@ -323,52 +330,66 @@ function generateQuestions(count, offsetSeed = 0) {
     return questions;
 }
 
-const preTestQuestions = generateQuestions(50, 0);
-const postTestQuestions = generateQuestions(100, 50);
+const preTestQuestions = generateQuestions(100, 0);
+const postTestQuestions = generateQuestions(233, 100);
 
-// GLOBAL STATE
 let currentUser = null;
 let currentTestType = null;
 let currentQuestions = [];
 let currentQIndex = 0;
 let userAnswers = [];
 
-const ADMIN_PASS = "Fakinah_Word_Formation";
+function toggleLoading(show) {
+    document.getElementById('loading').classList.toggle('hidden', !show);
+}
 
-// INTEGRASI API JSONBIN
-async function fetchCloudData() {
+// KHUSUS OPERASI SERVER JSONBIN
+async function fetchOnlineDB(showAlert = false) {
+    toggleLoading(true);
     try {
-        const response = await fetch(`${JSONBIN_URL}/latest`, {
-            headers: { "X-Master-Key": JSONBIN_API_KEY }
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+            headers: { 'X-Master-Key': JSONBIN_API_KEY }
         });
-        if (!response.ok) throw new Error("Gagal mengambil data dari server");
-        const data = await response.json();
-        return data.record || {};
+        if (!res.ok) throw new Error("Gagal mengambil data dari server.");
+        const data = await res.json();
+        const db = data.record || {};
+        localStorage.setItem('v333_users_db', JSON.stringify(db));
+        if (showAlert) alert("Data berhasil diperbarui dari server!");
+        return db;
     } catch (err) {
         console.error(err);
-        return {};
+        alert("Gagal terhubung ke server online. Menggunakan data lokal terpaut.");
+        return JSON.parse(localStorage.getItem('v333_users_db') || '{}');
+    } finally {
+        toggleLoading(false);
     }
 }
 
-async function updateCloudData(usersDB) {
+async function saveOnlineDB(db) {
+    toggleLoading(true);
+    localStorage.setItem('v333_users_db', JSON.stringify(db));
     try {
-        await fetch(JSONBIN_URL, {
+        await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 'X-Master-Key': JSONBIN_API_KEY
             },
-            body: JSON.stringify(usersDB)
+            body: JSON.stringify(db)
         });
     } catch (err) {
-        console.error("Gagal sinkronisasi data ke cloud:", err);
+        console.error("Gagal sinkronisasi online:", err);
+        alert("Peringatan: Gagal menyimpan rekap nilai ke server pusat. Periksa koneksi internet.");
+    } finally {
+        toggleLoading(false);
     }
 }
 
-window.onload = function() {
-    let savedUser = localStorage.getItem('wf_current_user');
+window.onload = async function() {
+    let savedUser = localStorage.getItem('v333_current_user');
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
+        await fetchOnlineDB();
         showDashboard();
     }
 };
@@ -376,18 +397,13 @@ window.onload = function() {
 async function handleRegister() {
     const name = document.getElementById('user-name').value.trim();
     const phone = document.getElementById('user-phone').value.trim();
-    const btnReg = document.getElementById('btn-reg');
-    const loadingText = document.getElementById('reg-loading');
 
     if (!name || !phone) {
         alert("Mohon isi Nama dan Nomor Telepon dengan benar.");
         return;
     }
 
-    btnReg.disabled = true;
-    loadingText.innerText = "Menghubungkan ke server...";
-
-    let usersDB = await fetchCloudData();
+    let usersDB = await fetchOnlineDB();
     
     if (!usersDB[phone]) {
         usersDB[phone] = { name: name, phone: phone, preScore: null, postScore: null };
@@ -395,23 +411,21 @@ async function handleRegister() {
         usersDB[phone].name = name;
     }
 
-    await updateCloudData(usersDB);
+    await saveOnlineDB(usersDB);
     currentUser = usersDB[phone];
-    localStorage.setItem('wf_current_user', JSON.stringify(currentUser));
+    localStorage.setItem('v333_current_user', JSON.stringify(currentUser));
     
-    btnReg.disabled = false;
-    loadingText.innerText = "";
     showDashboard();
 }
 
-async function showDashboard() {
+function showDashboard() {
     document.getElementById('view-register').classList.add('hidden');
     document.getElementById('view-test').classList.add('hidden');
     document.getElementById('view-result').classList.add('hidden');
     document.getElementById('view-admin').classList.add('hidden');
     document.getElementById('view-dashboard').classList.remove('hidden');
 
-    let usersDB = await fetchCloudData();
+    let usersDB = JSON.parse(localStorage.getItem('v333_users_db') || '{}');
     if (currentUser && usersDB[currentUser.phone]) {
         currentUser = usersDB[currentUser.phone];
     }
@@ -426,7 +440,7 @@ async function showDashboard() {
 
     if (currentUser.preScore !== null) {
         preStat.innerHTML = `<span class="badge bg-green">Selesai (Skor: ${currentUser.preScore}%)</span>`;
-        btnPre.innerText = "Ulangi Pre-Test";
+        btnPre.innerText = "Ulangi Pre-Test (100 Soal)";
         btnPost.disabled = false;
         postStat.innerHTML = `<span class="badge bg-blue">Siap Dikerjakan</span>`;
     } else {
@@ -437,12 +451,12 @@ async function showDashboard() {
 
     if (currentUser.postScore !== null) {
         postStat.innerHTML = `<span class="badge bg-green">Selesai (Skor: ${currentUser.postScore}%)</span>`;
-        btnPost.innerText = "Ulangi Post-Test";
+        btnPost.innerText = "Ulangi Post-Test (233 Soal)";
     }
 }
 
 function logoutUser() {
-    localStorage.removeItem('wf_current_user');
+    localStorage.removeItem('v333_current_user');
     currentUser = null;
     document.getElementById('view-dashboard').classList.add('hidden');
     document.getElementById('view-register').classList.remove('hidden');
@@ -456,7 +470,7 @@ function startTest(type) {
 
     document.getElementById('view-dashboard').classList.add('hidden');
     document.getElementById('view-test').classList.remove('hidden');
-    document.getElementById('test-title').innerText = type === 'pre' ? 'Pre-Test Word Formation' : 'Post-Test Word Formation';
+    document.getElementById('test-title').innerText = type === 'pre' ? 'Pre-Test 333 Verbs (100 Soal)' : 'Post-Test 333 Verbs (233 Soal)';
 
     renderQuestion();
 }
@@ -497,10 +511,6 @@ function nextQuestion() {
 }
 
 async function finishTest() {
-    const btnNext = document.getElementById('btn-next');
-    btnNext.disabled = true;
-    btnNext.innerText = "Mengirim Nilai ke Server...";
-
     let correctCount = 0;
     currentQuestions.forEach((q, idx) => {
         if (userAnswers[idx] === q.correct) correctCount++;
@@ -508,7 +518,7 @@ async function finishTest() {
 
     let score = Math.round((correctCount / currentQuestions.length) * 100);
 
-    let usersDB = await fetchCloudData();
+    let usersDB = await fetchOnlineDB();
     if (currentTestType === 'pre') {
         currentUser.preScore = score;
     } else {
@@ -516,37 +526,34 @@ async function finishTest() {
     }
 
     usersDB[currentUser.phone] = currentUser;
-    await updateCloudData(usersDB);
-    localStorage.setItem('wf_current_user', JSON.stringify(currentUser));
+    await saveOnlineDB(usersDB);
+    localStorage.setItem('v333_current_user', JSON.stringify(currentUser));
 
-    btnNext.disabled = false;
     document.getElementById('view-test').classList.add('hidden');
     document.getElementById('view-result').classList.remove('hidden');
     document.getElementById('score-val').innerText = score;
-    document.getElementById('score-detail').innerText = `Anda berhasil menjawab benar ${correctCount} dari total ${currentQuestions.length} soal. Nilai Anda telah otomatis tersimpan di server cloud operator.`;
+    document.getElementById('score-detail').innerText = `Anda berhasil menjawab benar ${correctCount} dari total ${currentQuestions.length} soal. Nilai Anda telah otomatis tersimpan di server operator.`;
 }
 
-// PANEL OPERATOR & KONTROL
 async function openAdmin() {
     const inputPass = prompt("Masukkan Password Operator:");
     if (inputPass === ADMIN_PASS) {
+        await fetchOnlineDB();
         document.getElementById('view-register').classList.add('hidden');
         document.getElementById('view-dashboard').classList.add('hidden');
         document.getElementById('view-test').classList.add('hidden');
         document.getElementById('view-result').classList.add('hidden');
         document.getElementById('view-admin').classList.remove('hidden');
 
-        await renderAdminTable();
+        renderAdminTable();
     } else if (inputPass !== null) {
         alert("Kata sandi salah! Akses ditolak.");
     }
 }
 
-async function renderAdminTable() {
+function renderAdminTable() {
+    let usersDB = JSON.parse(localStorage.getItem('v333_users_db') || '{}');
     const tbody = document.getElementById('admin-table-body');
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Memuat data dari cloud...</td></tr>`;
-
-    let usersDB = await fetchCloudData();
     tbody.innerHTML = '';
 
     const keys = Object.keys(usersDB);
@@ -573,19 +580,19 @@ async function renderAdminTable() {
 
 async function resetUser(phone) {
     if (confirm(`Apakah Anda yakin ingin mereset hasil tes untuk ID/No HP: ${phone}?`)) {
-        let usersDB = await fetchCloudData();
+        let usersDB = await fetchOnlineDB();
         if (usersDB[phone]) {
             usersDB[phone].preScore = null;
             usersDB[phone].postScore = null;
-            await updateCloudData(usersDB);
+            await saveOnlineDB(usersDB);
             renderAdminTable();
         }
     }
 }
 
-async function exportCSV() {
-    let usersDB = await fetchCloudData();
-    let csv = 'No HP (ID),Nama Peserta,Pre-Test Score,Post-Test Score\n';
+function exportCSV() {
+    let usersDB = JSON.parse(localStorage.getItem('v333_users_db') || '{}');
+    let csv = 'No HP (ID),Nama Peserta,Pre-Test Score (100),Post-Test Score (233)\n';
 
     Object.keys(usersDB).forEach(phone => {
         let u = usersDB[phone];
@@ -596,7 +603,7 @@ async function exportCSV() {
     let url = window.URL.createObjectURL(blob);
     let a = document.createElement('a');
     a.setAttribute('href', url);
-    a.setAttribute('download', 'Rekap_Nilai_Word_Formation.csv');
+    a.setAttribute('download', 'Rekap_Nilai_333_Verbs.csv');
     a.click();
 }
 </script>
