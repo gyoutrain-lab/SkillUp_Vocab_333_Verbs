@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>333 Verbs Mastery Assessment</title>
+    <!-- Library Chart.js untuk Grafik -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -14,6 +16,7 @@
             --border: #e2e8f0;
             --success: #16a34a;
             --danger: #dc2626;
+            --warning: #d97706;
         }
 
         body {
@@ -26,7 +29,7 @@
         }
 
         .container {
-            max-width: 850px;
+            max-width: 900px;
             margin: 0 auto;
             background: var(--card-bg);
             padding: 30px;
@@ -34,7 +37,7 @@
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
         }
 
-        h1, h2, h3 { color: #0f172a; margin-top: 0; }
+        h1, h2, h3, h4 { color: #0f172a; margin-top: 0; }
 
         .form-group { margin-bottom: 20px; }
 
@@ -70,6 +73,10 @@
         .btn-block { width: 100%; }
         .btn-danger { background-color: var(--danger); }
         .btn-danger:hover { background-color: #b91c1c; }
+        .btn-success { background-color: var(--success); }
+        .btn-success:hover { background-color: #15803d; }
+        .btn-warning { background-color: var(--warning); }
+        .btn-warning:hover { background-color: #b45309; }
 
         .hidden { display: none !important; }
 
@@ -81,6 +88,23 @@
             background-color: #fff;
         }
 
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card h4 { margin: 0; font-size: 14px; color: #64748b; }
+        .stat-card .value { font-size: 24px; font-weight: bold; color: var(--primary); margin-top: 5px; }
+
         .option-label {
             display: flex;
             align-items: center;
@@ -89,7 +113,6 @@
             border-radius: 6px;
             margin-bottom: 8px;
             cursor: pointer;
-            transition: background 0.2s;
         }
 
         .option-label:hover { background-color: #f1f5f9; }
@@ -134,6 +157,13 @@
             font-weight: 600;
         }
         .admin-link:hover { background: #cbd5e1; }
+
+        .action-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -202,29 +232,81 @@
         <button onclick="showDashboard()">Kembali ke Dashboard Utama</button>
     </div>
 
+    <!-- PREVIEW SOAL VIEW (KHUSUS OPERATOR) -->
+    <div id="view-preview" class="hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h2 id="preview-title" style="margin:0;">Pratinjau Bank Soal</h2>
+            <button onclick="openAdminDirect()">&larr; Kembali ke Panel Operator</button>
+        </div>
+        <div id="preview-container"></div>
+    </div>
+
     <!-- ADMIN PANEL -->
     <div id="view-admin" class="hidden">
         <h2>Panel Operator / Administrator</h2>
-        <p>Akses Terproteksi Kata Sandi Operator</p>
+        <p style="color:#64748b;">Akses Terproteksi Kata Sandi Operator</p>
         
-        <div style="display:flex; gap:10px; margin-bottom:15px;">
-            <button onclick="showDashboard()">&larr; Kembali ke Dashboard Peserta</button>
-            <button onclick="exportCSV()" style="background-color:var(--success);">Unduh Rekap CSV / Excel</button>
+        <div style="margin-bottom:20px;">
+            <button onclick="showDashboard()" style="background:#64748b;">&larr; Keluar dari Panel Operator</button>
+        </div>
+
+        <!-- AKSES CEPAT SOAL -->
+        <div class="card">
+            <h3>Akses Cepat Soal (Khusus Operator)</h3>
+            <p style="font-size:14px; color:#64748b;">Operator dapat membuka dan meninjau seluruh bank soal tanpa mempengaruhi data peserta:</p>
+            <div class="action-bar">
+                <button onclick="previewQuestions('pre')">Buka & Pratinjau Pre-Test (100 Soal)</button>
+                <button onclick="previewQuestions('post')">Buka & Pratinjau Post-Test (233 Soal)</button>
+            </div>
+        </div>
+
+        <!-- GRAFIK CAPAIAN -->
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="margin:0;">Grafik Capaian Nilai Peserta (Live Online)</h3>
+                <button onclick="refreshAdminData()" class="btn-warning" style="font-size:13px; padding:6px 12px;">🔄 Refresh Data Nilai Terbaru</button>
+            </div>
+            <canvas id="scoreChart" style="max-height: 280px;"></canvas>
+        </div>
+
+        <!-- STATISTIK RINGKASAN -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>Total Peserta Terdaftar</h4>
+                <div class="value" id="stat-total-users">0</div>
+            </div>
+            <div class="stat-card">
+                <h4>Rata-rata Pre-Test</h4>
+                <div class="value" id="stat-avg-pre">0%</div>
+            </div>
+            <div class="stat-card">
+                <h4>Rata-rata Post-Test</h4>
+                <div class="value" id="stat-avg-post">0%</div>
+            </div>
         </div>
         
+        <!-- DAFTAR NILAI & KONTROL DATA -->
         <div class="card">
-            <h3>Daftar Nilai Kuis Seluruh Peserta</h3>
+            <h3>Daftar Nilai Kuis Seluruh Peserta (Real-time Online)</h3>
+            <p style="font-size:13px; color:#64748b;">Nilai dari peserta akan otomatis terisi di tabel ini. Klik tombol di bawah untuk mengunduh atau mengelola rekapitulasi nilai.</p>
+            
+            <div class="action-bar">
+                <button onclick="exportCSV()" class="btn-success">Unduh CSV / Excel</button>
+                <button onclick="clearAllData()" class="btn-danger">🗑️ Hapus Semua Peserta</button>
+            </div>
+
             <table>
                 <thead>
                     <tr>
                         <th>No HP (ID)</th>
                         <th>Nama Peserta</th>
-                        <th>Pre-Test (100)</th>
-                        <th>Post-Test (233)</th>
+                        <th>Pre-Test</th>
+                        <th>Post-Test</th>
                         <th>Aksi Operator</th>
                     </tr>
                 </thead>
                 <tbody id="admin-table-body">
+                    <tr><td colspan="5" style="text-align:center;">Belum ada peserta yang mendaftar atau mengerjakan tes.</td></tr>
                 </tbody>
             </table>
         </div>
@@ -235,7 +317,7 @@
 
 <script>
 // ==========================================
-// ISI DUA VARIABEL DI BAWAH INI DARI JSONBIN.IO
+// PASTE API KEY & BIN ID DARI JSONBIN.IO DI SINI:
 // ==========================================
 const JSONBIN_API_KEY = "$2a$10$4lmODdxaLkBVIsNU0wHrCOllyrGpXGSvKuZO/.g5c/L8N01GR/88S"; 
 const JSONBIN_BIN_ID  = "6a9e80587e19fe510f39230b"; 
@@ -251,66 +333,28 @@ const baseVerbs = [
     {v: "EXAMINE", n: "examination", adj: "examined", adv: "", agent: "examiner"},
     {v: "ASSIST", n: "assistance", adj: "assistant", adv: "", agent: "assistant"},
     {v: "PRESCRIBE", n: "prescription", adj: "prescriptive", adv: "", agent: "prescriber"},
-    {v: "STERILIZE", n: "sterilization", adj: "sterile", adv: "sterilly", agent: "sterilizer"},
-    {v: "DETERIORATE", n: "deterioration", adj: "deteriorating", adv: "", agent: ""},
-    {v: "INFECT", n: "infection", adj: "infectious", adv: "infectiously", agent: ""},
-    {v: "PREVENT", n: "prevention", adj: "preventive", adv: "preventively", agent: ""},
-    {v: "TREAT", n: "treatment", adj: "treatable", adv: "", agent: ""},
-    {v: "DIAGNOSE", n: "diagnosis", adj: "diagnostic", adv: "diagnostically", agent: "diagnostician"},
-    {v: "DIFFERENTIATE", n: "differentiation", adj: "differential", adv: "differentially", agent: ""},
-    {v: "EXACERBATE", n: "exacerbation", adj: "exacerbated", adv: "", agent: ""},
-    {v: "INTERVENE", n: "intervention", adj: "interventional", adv: "", agent: ""},
-    {v: "RECOMMEND", n: "recommendation", adj: "recommended", adv: "", agent: ""},
-    {v: "IDENTIFY", n: "identification", adj: "identifiable", adv: "", agent: ""}
+    {v: "STERILIZE", n: "sterilization", adj: "sterile", adv: "sterilly", agent: "sterilizer"}
 ];
 
 function generateQuestions(count, offsetSeed = 0) {
     let questions = [];
     const templates = [
-        {
-            type: "Noun Formation",
-            text: (v) => `The proper clinical _____ is mandatory before starting any medical procedure. (Root Verb: ${v.v})`,
-            ans: (v) => v.n
-        },
-        {
-            type: "Adjective Formation",
-            text: (v) => `The patient showed a significant response to the _____ intervention. (Root Verb: ${v.v})`,
-            ans: (v) => v.adj
-        },
-        {
-            type: "Adverb/Participle Formation",
-            text: (v) => `The attending physician carefully acted by _____ the patient's condition. (Root Verb: ${v.v})`,
-            ans: (v) => v.v.toLowerCase() + "ing"
-        },
-        {
-            type: "Agent Noun Formation",
-            text: (v) => `A qualified healthcare _____ was assigned to oversee the medical ward. (Root Verb: ${v.v})`,
-            ans: (v) => v.agent || v.n
-        }
+        { type: "Noun", text: (v) => `The proper clinical _____ is mandatory before starting treatment. (Root Verb: ${v.v})`, ans: (v) => v.n },
+        { type: "Adjective", text: (v) => `The patient showed a significant _____ response. (Root Verb: ${v.v})`, ans: (v) => v.adj },
+        { type: "Participle/Gerund", text: (v) => `The nurse is currently _____ the patient's vital signs. (Root Verb: ${v.v})`, ans: (v) => v.v.toLowerCase() + "ing" },
+        { type: "Agent Noun", text: (v) => `The assigned _____ checked the clinical logs carefully. (Root Verb: ${v.v})`, ans: (v) => v.agent || v.n }
     ];
 
     for (let i = 0; i < count; i++) {
         let verbObj = baseVerbs[(i + offsetSeed) % baseVerbs.length];
         let tpl = templates[i % templates.length];
         let correctAnswer = tpl.ans(verbObj);
-        
-        let options = [correctAnswer, verbObj.v.toLowerCase()];
-        if (verbObj.n && verbObj.n !== correctAnswer) options.push(verbObj.n);
-        if (verbObj.adj && verbObj.adj !== correctAnswer) options.push(verbObj.adj);
-        if (verbObj.adv && verbObj.adv !== correctAnswer) options.push(verbObj.adv);
-
+        let options = [correctAnswer, verbObj.v.toLowerCase(), verbObj.n, verbObj.adj].filter(Boolean);
         options = Array.from(new Set(options)).slice(0, 4);
-        while (options.length < 4) {
-            options.push(verbObj.v.toLowerCase() + "ed");
-        }
-
+        while(options.length < 4) options.push(verbObj.v.toLowerCase() + "ed");
         options.sort(() => Math.random() - 0.5);
 
-        questions.push({
-            q: `${i + 1}. ` + tpl.text(verbObj),
-            options: options,
-            correct: correctAnswer
-        });
+        questions.push({ q: `${i + 1}. ` + tpl.text(verbObj), options: options, correct: correctAnswer });
     }
     return questions;
 }
@@ -323,6 +367,7 @@ let currentTestType = null;
 let currentQuestions = [];
 let currentQIndex = 0;
 let userAnswers = [];
+let chartInstance = null;
 
 const ADMIN_PASS = "Fakinah_1";
 
@@ -337,24 +382,15 @@ window.onload = function() {
 function handleRegister() {
     const name = document.getElementById('user-name').value.trim();
     const phone = document.getElementById('user-phone').value.trim();
-
-    if (!name || !phone) {
-        alert("Mohon isi Nama dan Nomor Telepon dengan benar.");
-        return;
-    }
+    if (!name || !phone) return alert("Isi nama dan nomor HP.");
 
     let usersDB = JSON.parse(localStorage.getItem('v333_users_db') || '{}');
-    
-    if (!usersDB[phone]) {
-        usersDB[phone] = { name: name, phone: phone, preScore: null, postScore: null };
-    } else {
-        usersDB[phone].name = name;
-    }
+    if (!usersDB[phone]) usersDB[phone] = { name: name, phone: phone, preScore: null, postScore: null };
+    else usersDB[phone].name = name;
 
     localStorage.setItem('v333_users_db', JSON.stringify(usersDB));
     currentUser = usersDB[phone];
     localStorage.setItem('v333_current_user', JSON.stringify(currentUser));
-    
     showDashboard();
 }
 
@@ -363,35 +399,22 @@ function showDashboard() {
     document.getElementById('view-test').classList.add('hidden');
     document.getElementById('view-result').classList.add('hidden');
     document.getElementById('view-admin').classList.add('hidden');
+    document.getElementById('view-preview').classList.add('hidden');
     document.getElementById('view-dashboard').classList.remove('hidden');
 
     let usersDB = JSON.parse(localStorage.getItem('v333_users_db') || '{}');
-    if (currentUser && usersDB[currentUser.phone]) {
-        currentUser = usersDB[currentUser.phone];
-    }
+    if (currentUser && usersDB[currentUser.phone]) currentUser = usersDB[currentUser.phone];
 
     document.getElementById('dash-name').innerText = currentUser.name;
     document.getElementById('dash-phone').innerText = currentUser.phone;
 
-    const preStat = document.getElementById('status-pretest');
-    const postStat = document.getElementById('status-posttest');
-    const btnPre = document.getElementById('btn-pretest');
-    const btnPost = document.getElementById('btn-posttest');
-
     if (currentUser.preScore !== null) {
-        preStat.innerHTML = `<span class="badge bg-green">Selesai (Skor: ${currentUser.preScore}%)</span>`;
-        btnPre.innerText = "Ulangi Pre-Test (100 Soal)";
-        btnPost.disabled = false;
-        postStat.innerHTML = `<span class="badge bg-blue">Siap Dikerjakan</span>`;
-    } else {
-        preStat.innerHTML = `<span class="badge bg-blue">Belum Selesai</span>`;
-        btnPost.disabled = true;
-        postStat.innerHTML = `<span class="badge bg-blue">Terkunci (Selesaikan Pre-Test Dahulu)</span>`;
+        document.getElementById('status-pretest').innerHTML = `<span class="badge bg-green">Selesai (${currentUser.preScore}%)</span>`;
+        document.getElementById('btn-posttest').disabled = false;
+        document.getElementById('status-posttest').innerHTML = `<span class="badge bg-blue">Siap Dikerjakan</span>`;
     }
-
     if (currentUser.postScore !== null) {
-        postStat.innerHTML = `<span class="badge bg-green">Selesai (Skor: ${currentUser.postScore}%)</span>`;
-        btnPost.innerText = "Ulangi Post-Test (233 Soal)";
+        document.getElementById('status-posttest').innerHTML = `<span class="badge bg-green">Selesai (${currentUser.postScore}%)</span>`;
     }
 }
 
@@ -410,8 +433,6 @@ function startTest(type) {
 
     document.getElementById('view-dashboard').classList.add('hidden');
     document.getElementById('view-test').classList.remove('hidden');
-    document.getElementById('test-title').innerText = type === 'pre' ? 'Pre-Test 333 Verbs (100 Soal)' : 'Post-Test 333 Verbs (233 Soal)';
-
     renderQuestion();
 }
 
@@ -419,7 +440,6 @@ function renderQuestion() {
     const qData = currentQuestions[currentQIndex];
     document.getElementById('test-progress').innerText = `Soal ${currentQIndex + 1} dari ${currentQuestions.length}`;
     document.getElementById('question-text').innerText = qData.q;
-
     const optContainer = document.getElementById('options-container');
     optContainer.innerHTML = '';
 
@@ -429,41 +449,24 @@ function renderQuestion() {
             <label class="option-label">
                 <input type="radio" name="opt" value="${opt}" ${isChecked} onchange="userAnswers[${currentQIndex}] = '${opt}'">
                 ${opt}
-            </label>
-        `;
+            </label>`;
     });
-
-    document.getElementById('btn-next').innerText = (currentQIndex === currentQuestions.length - 1) ? "Selesaikan & Kirim Jawaban" : "Soal Berikutnya";
+    document.getElementById('btn-next').innerText = (currentQIndex === currentQuestions.length - 1) ? "Selesaikan" : "Berikutnya";
 }
 
 function nextQuestion() {
-    if (userAnswers[currentQIndex] === null) {
-        alert("Silakan pilih salah satu jawaban sebelum melanjutkan!");
-        return;
-    }
-
-    if (currentQIndex < currentQuestions.length - 1) {
-        currentQIndex++;
-        renderQuestion();
-    } else {
-        finishTest();
-    }
+    if (userAnswers[currentQIndex] === null) return alert("Pilih jawaban dulu!");
+    if (currentQIndex < currentQuestions.length - 1) { currentQIndex++; renderQuestion(); }
+    else finishTest();
 }
 
 function finishTest() {
-    let correctCount = 0;
-    currentQuestions.forEach((q, idx) => {
-        if (userAnswers[idx] === q.correct) correctCount++;
-    });
-
+    let correctCount = userAnswers.filter((a, i) => a === currentQuestions[i].correct).length;
     let score = Math.round((correctCount / currentQuestions.length) * 100);
 
     let usersDB = JSON.parse(localStorage.getItem('v333_users_db') || '{}');
-    if (currentTestType === 'pre') {
-        currentUser.preScore = score;
-    } else {
-        currentUser.postScore = score;
-    }
+    if (currentTestType === 'pre') currentUser.preScore = score;
+    else currentUser.postScore = score;
 
     usersDB[currentUser.phone] = currentUser;
     localStorage.setItem('v333_users_db', JSON.stringify(usersDB));
@@ -472,130 +475,177 @@ function finishTest() {
     document.getElementById('view-test').classList.add('hidden');
     document.getElementById('view-result').classList.remove('hidden');
     document.getElementById('score-val').innerText = score;
-    document.getElementById('score-detail').innerText = `Anda berhasil menjawab benar ${correctCount} dari total ${currentQuestions.length} soal. Nilai Anda telah otomatis tersimpan.`;
 
     saveToJSONBin(usersDB);
 }
 
-// INTEGRASI JSONBIN.IO
 async function saveToJSONBin(usersDB) {
-    const syncElem = document.getElementById('sync-status');
-    if (JSONBIN_API_KEY.includes("PASTE") || JSONBIN_BIN_ID.includes("PASTE")) {
-        syncElem.innerText = "⚠️ API Key / Bin ID JSONBin belum diatur (data disimpan di memori browser).";
-        return;
-    }
-
-    syncElem.innerText = "🔄 Mengirim nilai ke Server JSONBin...";
-
+    if (JSONBIN_API_KEY.includes("PASTE")) return;
     try {
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+        await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Master-Key': JSONBIN_API_KEY
-            },
+            headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY },
             body: JSON.stringify(usersDB)
         });
-
-        if (response.ok) {
-            syncElem.innerText = "✅ Nilai berhasil tersimpan secara online di JSONBin!";
-        } else {
-            syncElem.innerText = "⚠️ Gagal kirim ke JSONBin (periksa API Key/Bin ID).";
-        }
-    } catch (err) {
-        syncElem.innerText = "⚠️ Gagal terhubung ke internet, nilai tersimpan di browser.";
-        console.error(err);
-    }
+    } catch (e) { console.error(e); }
 }
 
 async function fetchFromJSONBin() {
-    if (JSONBIN_API_KEY.includes("PASTE") || JSONBIN_BIN_ID.includes("PASTE")) return;
-
+    if (JSONBIN_API_KEY.includes("PASTE")) return;
     try {
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
             headers: { 'X-Master-Key': JSONBIN_API_KEY }
         });
-        if (response.ok) {
-            const data = await response.json();
-            if (data.record) {
-                localStorage.setItem('v333_users_db', JSON.stringify(data.record));
-            }
+        if (res.ok) {
+            const data = await res.json();
+            if (data.record) localStorage.setItem('v333_users_db', JSON.stringify(data.record));
         }
-    } catch (err) {
-        console.error("Gagal mengambil data dari JSONBin:", err);
-    }
+    } catch (e) { console.error(e); }
 }
 
 async function openAdmin() {
-    const inputPass = prompt("Masukkan Password Operator:");
-    if (inputPass === ADMIN_PASS) {
-        document.getElementById('view-register').classList.add('hidden');
-        document.getElementById('view-dashboard').classList.add('hidden');
-        document.getElementById('view-test').classList.add('hidden');
-        document.getElementById('view-result').classList.add('hidden');
-        document.getElementById('view-admin').classList.remove('hidden');
-
-        await fetchFromJSONBin();
-        renderAdminTable();
-    } else if (inputPass !== null) {
-        alert("Kata sandi salah! Akses ditolak.");
-    }
+    if (prompt("Masukkan Password Operator:") === ADMIN_PASS) {
+        openAdminDirect();
+    } else alert("Password Operator Salah!");
 }
 
-function renderAdminTable() {
+async function openAdminDirect() {
+    document.getElementById('view-register').classList.add('hidden');
+    document.getElementById('view-dashboard').classList.add('hidden');
+    document.getElementById('view-test').classList.add('hidden');
+    document.getElementById('view-result').classList.add('hidden');
+    document.getElementById('view-preview').classList.add('hidden');
+    document.getElementById('view-admin').classList.remove('hidden');
+
+    await fetchFromJSONBin();
+    renderAdminDashboard();
+}
+
+async function refreshAdminData() {
+    await fetchFromJSONBin();
+    renderAdminDashboard();
+    alert("Data nilai berhasil diperbarui!");
+}
+
+function renderAdminDashboard() {
     let usersDB = JSON.parse(localStorage.getItem('v333_users_db') || '{}');
     const tbody = document.getElementById('admin-table-body');
     tbody.innerHTML = '';
 
-    const keys = Object.keys(usersDB);
-    if (keys.length === 0) {
+    const users = Object.values(usersDB);
+    document.getElementById('stat-total-users').innerText = users.length;
+
+    if (users.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Belum ada peserta yang mendaftar atau mengerjakan tes.</td></tr>`;
+        document.getElementById('stat-avg-pre').innerText = '0%';
+        document.getElementById('stat-avg-post').innerText = '0%';
+        if (chartInstance) chartInstance.destroy();
         return;
     }
 
-    keys.forEach(phone => {
-        let u = usersDB[phone];
+    let preScores = [], postScores = [], labels = [];
+    let sumPre = 0, countPre = 0, sumPost = 0, countPost = 0;
+
+    users.forEach(u => {
+        labels.push(u.name);
+        preScores.push(u.preScore !== null ? u.preScore : 0);
+        postScores.push(u.postScore !== null ? u.postScore : 0);
+
+        if (u.preScore !== null) { sumPre += u.preScore; countPre++; }
+        if (u.postScore !== null) { sumPost += u.postScore; countPost++; }
+
         tbody.innerHTML += `
             <tr>
                 <td><strong>${u.phone}</strong></td>
                 <td>${u.name}</td>
                 <td>${u.preScore !== null ? u.preScore + '%' : '<span style="color:#aaa;">Belum</span>'}</td>
                 <td>${u.postScore !== null ? u.postScore + '%' : '<span style="color:#aaa;">Belum</span>'}</td>
-                <td>
-                    <button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="resetUser('${u.phone}')">Reset Tes</button>
-                </td>
-            </tr>
+                <td><button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="resetUser('${u.phone}')">Reset</button></td>
+            </tr>`;
+    });
+
+    document.getElementById('stat-avg-pre').innerText = countPre ? Math.round(sumPre / countPre) + '%' : '0%';
+    document.getElementById('stat-avg-post').innerText = countPost ? Math.round(sumPost / countPost) + '%' : '0%';
+
+    const ctx = document.getElementById('scoreChart').getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+    
+    chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Pre-Test (%)', data: preScores, backgroundColor: '#2563eb' },
+                { label: 'Post-Test (%)', data: postScores, backgroundColor: '#16a34a' }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true, max: 100 } }
+        }
+    });
+}
+
+function previewQuestions(type) {
+    const questions = type === 'pre' ? preTestQuestions : postTestQuestions;
+    const title = type === 'pre' ? 'Pratinjau Pre-Test (100 Soal)' : 'Pratinjau Post-Test (233 Soal)';
+
+    document.getElementById('view-admin').classList.add('hidden');
+    document.getElementById('view-preview').classList.remove('hidden');
+    document.getElementById('preview-title').innerText = title;
+
+    const container = document.getElementById('preview-container');
+    container.innerHTML = '';
+
+    questions.forEach((q, idx) => {
+        let optsHtml = q.options.map(o => `
+            <li style="color:${o === q.correct ? 'var(--success)' : 'inherit'}; font-weight:${o === q.correct ? 'bold' : 'normal'}">
+                ${o} ${o === q.correct ? '✓ (Kunci)' : ''}
+            </li>
+        `).join('');
+
+        container.innerHTML += `
+            <div class="card" style="margin-bottom:12px; padding:15px;">
+                <p style="font-weight:600; margin-bottom:8px;">Soal ${idx + 1}: ${q.q}</p>
+                <ul style="margin:0; padding-left:20px;">${optsHtml}</ul>
+            </div>
         `;
     });
 }
 
 function resetUser(phone) {
-    if (confirm(`Apakah Anda yakin ingin mereset hasil tes untuk ID/No HP: ${phone}?`)) {
+    if (confirm(`Reset hasil tes untuk ID/No HP: ${phone}?`)) {
         let usersDB = JSON.parse(localStorage.getItem('v333_users_db') || '{}');
         if (usersDB[phone]) {
             usersDB[phone].preScore = null;
             usersDB[phone].postScore = null;
             localStorage.setItem('v333_users_db', JSON.stringify(usersDB));
             saveToJSONBin(usersDB);
-            renderAdminTable();
+            renderAdminDashboard();
         }
+    }
+}
+
+function clearAllData() {
+    if (confirm("⚠️ APAKAH ANDA YAKIN? Tindakan ini akan MENGHAPUS SELURUH DATA PESERTA secara permanen!")) {
+        let emptyDB = {};
+        localStorage.setItem('v333_users_db', JSON.stringify(emptyDB));
+        saveToJSONBin(emptyDB);
+        renderAdminDashboard();
+        alert("Seluruh data peserta telah berhasil dibersihkan.");
     }
 }
 
 function exportCSV() {
     let usersDB = JSON.parse(localStorage.getItem('v333_users_db') || '{}');
-    let csv = 'No HP (ID),Nama Peserta,Pre-Test Score (100),Post-Test Score (233)\n';
-
-    Object.keys(usersDB).forEach(phone => {
-        let u = usersDB[phone];
+    let csv = 'No HP (ID),Nama Peserta,Pre-Test Score,Post-Test Score\n';
+    Object.values(usersDB).forEach(u => {
         csv += `"${u.phone}","${u.name}",${u.preScore !== null ? u.preScore : ''},${u.postScore !== null ? u.postScore : ''}\n`;
     });
-
     let blob = new Blob([csv], { type: 'text/csv' });
-    let url = window.URL.createObjectURL(blob);
     let a = document.createElement('a');
-    a.setAttribute('href', url);
-    a.setAttribute('download', 'Rekap_Nilai_333_Verbs.csv');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Rekap_Nilai_333_Verbs.csv';
     a.click();
 }
 </script>
